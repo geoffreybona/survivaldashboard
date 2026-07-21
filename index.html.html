@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🛡️ SurvivalStock — Dashboard Famille</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+/* ── RESET ─────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+
+/* ── TOKENS ────────────────────────────────────────────── */
+:root{
+  --bg:#F2F2F7;--bg2:#fff;--bg3:#E5E5EA;--bg4:#D1D1D6;
+  --text:#1C1C1E;--text2:#3C3C43;--text3:#8E8E93;--sep:#C6C6C8;
+  --accent:#007AFF;--red:#FF3B30;--green:#34C759;
+  --orange:#FF9500;--yellow:#FFCC00;--purple:#AF52DE;--teal:#5AC8FA;
+  --r:14px;--sh:0 1px 3px rgba(0,0,0,.07),0 4px 12px rgba(0,0,0,.05);
+  --nav:66px;--side:220px;--hdr:56px;
+}
+.dark{
+  --bg:#000;--bg2:#1C1C1E;--bg3:#2C2C2E;--bg4:#3A3A3C;
+  --text:#fff;--text2:#EBEBF5;--text3:#8E8E93;--sep:#38383A;
+  --sh:0 1px 3px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.2);
+}
+
+/* ── BASE ──────────────────────────────────────────────── */
+html,body{height:100%;overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;
+  background:var(--bg);color:var(--text);transition:background .3s,color .3s}
+
+/* ── SHELL ─────────────────────────────────────────────── */
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ── HEADER ────────────────────────────────────────────── */
+.hdr{
+  height:var(--hdr);flex-shrink:0;
+  background:var(--bg2);border-bottom:.5px solid var(--sep);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;z-index:80;gap:12px;
+}
+.hdr-left{display:flex;align-items:center;gap:10px;min-width:0}
+.hdr-logo{font-size:22px;flex-shrink:0}
+.hdr-title{font-size:16px;font-weight:700;color:var(--text);white-space:nowrap}
+.hdr-sub{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toggle-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.tgl-lbl{font-size:13px}
+.tgl{width:44px;height:26px;background:var(--green);border-radius:13px;position:relative;cursor:pointer;transition:background .3s;flex-shrink:0}
+.tgl.off{background:var(--text3)}
+.tgl-knob{width:22px;height:22px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform .3s;box-shadow:0 2px 4px rgba(0,0,0,.25)}
+.tgl.on .tgl-knob{transform:translateX(18px)}
+
+/* ── APP BODY ──────────────────────────────────────────── */
+.app-body{flex:1;display:flex;overflow:hidden}
+
+/* ── SIDEBAR (≥1024px) ─────────────────────────────────── */
+.sidebar{
+  display:none;width:var(--side);flex-shrink:0;
+  background:var(--bg2);border-right:.5px solid var(--sep);
+  flex-direction:column;padding:16px 10px;gap:2px;overflow-y:auto;
+}
+.sb-section{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;
+  letter-spacing:.6px;padding:14px 12px 6px}
+.sb-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:10px;cursor:pointer;border:none;background:none;
+  color:var(--text3);font-size:14px;font-weight:600;width:100%;text-align:left;
+  transition:background .15s,color .15s;
+}
+.sb-item svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.sb-item:hover{background:var(--bg3)}
+.sb-item.active{background:rgba(0,122,255,.12);color:var(--accent)}
+.sb-divider{height:.5px;background:var(--sep);margin:8px 12px}
+
+/* ── MAIN SCROLL ───────────────────────────────────────── */
+.main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  padding-bottom:calc(var(--nav) + 8px)}
+
+/* ── BOTTOM NAV (mobile/tablet) ────────────────────────── */
+.bnav{
+  position:fixed;bottom:0;left:0;right:0;height:var(--nav);
+  background:var(--bg2);border-top:.5px solid var(--sep);
+  display:flex;align-items:stretch;z-index:90;
+  padding-bottom:env(safe-area-inset-bottom,0);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+}
+.ni{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;cursor:pointer;border:none;
+  background:none;color:var(--text3);transition:color .2s;padding:6px 0;
+}
+.ni.active{color:var(--accent)}
+.ni svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.ni-lbl{font-size:10px;font-weight:600;letter-spacing:.1px}
+
+/* ── FAB ───────────────────────────────────────────────── */
+.fab{
+  position:fixed;bottom:calc(var(--nav) + 14px);right:18px;
+  width:52px;height:52px;background:var(--accent);border-radius:50%;
+  border:none;color:#fff;font-size:28px;line-height:1;display:flex;
+  align-items:center;justify-content:center;cursor:pointer;
+  box-shadow:0 4px 18px rgba(0,122,255,.45);z-index:85;transition:transform .2s,box-shadow .2s;
+}
+.fab:hover{transform:scale(1.07);box-shadow:0 6px 22px rgba(0,122,255,.5)}
+
+/* ── PAGE WRAPPER ──────────────────────────────────────── */
+.page{padding:16px;max-width:100%}
+
+/* ── TYPOGRAPHY ────────────────────────────────────────── */
+.page-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:14px}
+.card-title{font-size:11px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
+.section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.count-lbl{font-size:13px;color:var(--text3);margin-bottom:10px}
+
+/* ── CARDS ─────────────────────────────────────────────── */
+.card{background:var(--bg2);border-radius:var(--r);padding:16px;
+  margin-bottom:12px;box-shadow:var(--sh)}
+
+/* ── ALERT ─────────────────────────────────────────────── */
+.alert-banner{
+  background:var(--red);border-radius:var(--r);padding:14px 16px;
+  margin-bottom:12px;display:flex;align-items:center;
+  justify-content:space-between;gap:10px;cursor:pointer;
+  box-shadow:0 4px 14px rgba(255,59,48,.3);
+}
+.alert-ok{
+  background:rgba(52,199,89,.1);border:1px solid rgba(52,199,89,.3);
+  border-radius:var(--r);padding:12px 16px;margin-bottom:12px;
+  display:flex;align-items:center;gap:10px;
+}
+.alert-text h3{color:#fff;font-size:14px;font-weight:700}
+.alert-text p{color:rgba(255,255,255,.85);font-size:12px;margin-top:2px}
+.alert-btn{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:9px;
+  padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+
+/* ── GAUGES ────────────────────────────────────────────── */
+.gauge-block{margin-bottom:12px}
+.gauge-block:last-child{margin-bottom:0}
+.gauge-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.gauge-name{font-size:14px;font-weight:600;color:var(--text)}
+.gauge-val{font-size:15px;font-weight:700;color:var(--text)}
+.gauge-track{height:12px;background:var(--bg3);border-radius:6px;overflow:hidden}
+.gauge-fill{height:100%;border-radius:6px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.gauge-foot{display:flex;justify-content:space-between;margin-top:4px}
+.gauge-sub{font-size:11px;color:var(--text3)}
+
+/* ── STATUS CARDS ──────────────────────────────────────── */
+.sc{background:var(--bg2);border-radius:var(--r);padding:14px;box-shadow:var(--sh)}
+.sc-icon{font-size:26px;margin-bottom:8px}
+.sc-label{font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.sc-val{margin-top:8px}
+.status-full{
+  background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:12px;
+  box-shadow:var(--sh);display:flex;align-items:center;justify-content:space-between;
+}
+
+/* ── BADGES ────────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;padding:5px 12px;border-radius:20px}
+.ok{background:rgba(52,199,89,.15);color:var(--green)}
+.warn{background:rgba(255,149,0,.15);color:var(--orange)}
+.bad{background:rgba(255,59,48,.12);color:var(--red)}
+
+/* ── CHARTS ────────────────────────────────────────────── */
+.chart-card{background:var(--bg2);border-radius:var(--r);padding:16px;
+  margin-bottom:12px;box-shadow:var(--sh)}
+.chart-wrap{position:relative;width:100%}
+.chart-bar-h{height:190px}
+.chart-pie-h{height:180px}
+
+/* ── SUMMARY CARD ──────────────────────────────────────── */
+.summary-card{background:linear-gradient(135deg,#0057B8,#5856D6);
+  border-radius:var(--r);padding:18px;margin-bottom:12px}
+.summary-card h3{color:rgba(255,255,255,.75);font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px}
+.sum-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.sum-item .sv{color:#fff;font-size:18px;font-weight:800}
+.sum-item .sl{color:rgba(255,255,255,.65);font-size:10px;margin-top:2px}
+
+/* ── FILTERS ───────────────────────────────────────────── */
+.filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.chip{border:none;border-radius:16px;padding:6px 14px;font-size:12px;font-weight:600;
+  cursor:pointer;white-space:nowrap;background:var(--bg3);color:var(--text3);
+  transition:all .2s;flex-shrink:0}
+.chip.active{background:var(--accent);color:#fff}
+
+/* ── STOCK LIST ────────────────────────────────────────── */
+.stock-list{background:var(--bg2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+.si{padding:12px 14px;border-bottom:.5px solid var(--sep);display:flex;
+  align-items:flex-start;gap:10px}
+.si:last-child{border-bottom:none}
+.si-icon{width:38px;height:38px;border-radius:10px;background:var(--bg3);
+  display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.si-body{flex:1;min-width:0}
+.si-name{font-size:14px;font-weight:600;color:var(--text);line-height:1.3;
+  word-break:break-word}
+.si-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.si-tag{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;
+  background:var(--bg3);color:var(--text3)}
+.si-actions{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+.btn-xs{border:none;border-radius:8px;padding:5px 10px;font-size:12px;
+  font-weight:700;cursor:pointer;transition:opacity .2s;white-space:nowrap}
+.btn-xs:hover{opacity:.8}
+.btn-e{background:rgba(0,122,255,.12);color:var(--accent)}
+.btn-d{background:rgba(255,59,48,.1);color:var(--red)}
+.btn-b{background:rgba(52,199,89,.12);color:var(--green)}
+.si-right{text-align:right;flex-shrink:0;min-width:68px}
+.si-qty{font-size:15px;font-weight:700;color:var(--text)}
+.si-unit{font-size:11px;color:var(--text3)}
+.si-exp{font-size:11px;margin-top:4px;font-weight:600}
+.si-exp.ok{color:var(--text3)}
+.si-exp.warn{color:var(--orange)}
+.si-exp.expired{color:var(--red)}
+
+/* ── COURSES ───────────────────────────────────────────── */
+.ci{display:flex;align-items:center;gap:12px;padding:12px 0;
+  border-bottom:.5px solid var(--sep)}
+.ci:last-child{border-bottom:none}
+.cbox{width:24px;height:24px;border-radius:50%;border:2px solid var(--sep);
+  flex-shrink:0;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .2s;font-size:13px}
+.cbox.done{background:var(--green);border-color:var(--green);color:#fff}
+.ci-name{flex:1;font-size:14px;color:var(--text);transition:all .2s;word-break:break-word}
+.ci-name.done{text-decoration:line-through;color:var(--text3)}
+.ci-qty{font-size:13px;font-weight:600;color:var(--text3);white-space:nowrap}
+
+/* ── MATERIAL ──────────────────────────────────────────── */
+.mat-list{background:var(--bg2);border-radius:var(--r);overflow:hidden;
+  box-shadow:var(--sh);margin-bottom:12px}
+.mat-hdr{display:grid;grid-template-columns:1fr 52px 52px;gap:6px;
+  padding:10px 14px;background:var(--bg3);border-bottom:.5px solid var(--sep)}
+.mat-hdr span{font-size:10px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.3px}
+.mat-item{display:grid;grid-template-columns:1fr 52px 52px;gap:6px;
+  align-items:center;padding:11px 14px;border-bottom:.5px solid var(--sep)}
+.mat-item:last-child{border-bottom:none}
+.mat-name{font-size:14px;font-weight:600;color:var(--text);line-height:1.3;
+  word-break:break-word}
+.mat-loc{font-size:11px;color:var(--text3);margin-top:2px}
+.mat-btns{display:flex;gap:4px;margin-top:6px}
+.chk{width:28px;height:28px;border-radius:8px;border:2px solid var(--sep);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;margin:0 auto;transition:all .2s}
+.chk.owned{background:var(--green);border-color:var(--green);color:#fff}
+.chk.depart{background:var(--orange);border-color:var(--orange);color:#fff}
+
+/* ── SETTINGS ──────────────────────────────────────────── */
+.range-big{font-size:36px;font-weight:800;color:var(--accent);
+  text-align:center;margin:4px 0}
+.range-desc{font-size:12px;color:var(--text3);text-align:center;margin-bottom:12px}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+.range-limits{display:flex;justify-content:space-between;margin-top:4px;
+  font-size:11px;color:var(--text3)}
+.person-card{background:var(--bg3);border-radius:12px;padding:12px 14px;
+  margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.person-avatar{width:40px;height:40px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:18px;
+  background:var(--accent);flex-shrink:0}
+.person-info{flex:1;min-width:0}
+.person-name{font-size:14px;font-weight:700;color:var(--text)}
+.person-detail{font-size:12px;color:var(--text3);margin-top:1px}
+.person-actions{display:flex;gap:6px;flex-shrink:0}
+.btn-add-p{width:100%;border:2px dashed var(--sep);background:transparent;
+  border-radius:12px;padding:12px;color:var(--accent);font-size:14px;
+  font-weight:700;cursor:pointer;margin-top:4px;transition:border-color .2s}
+.btn-add-p:hover{border-color:var(--accent)}
+
+/* ── MODALS ────────────────────────────────────────────── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;
+  display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--bg2);border-radius:24px 24px 0 0;width:100%;
+  max-height:90vh;overflow-y:auto;
+  padding:20px 20px calc(24px + env(safe-area-inset-bottom,0))}
+.modal-handle{width:40px;height:4px;background:var(--sep);border-radius:2px;
+  margin:0 auto 20px}
+.modal h2{font-size:20px;font-weight:800;color:var(--text);margin-bottom:18px}
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:11px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.fi{width:100%;background:var(--bg3);border:none;border-radius:12px;
+  padding:12px 14px;font-size:15px;color:var(--text);outline:none;
+  transition:background .2s;-webkit-appearance:none;appearance:none}
+.fi:focus{background:var(--bg4)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn-p{width:100%;background:var(--accent);color:#fff;border:none;
+  border-radius:14px;padding:15px;font-size:16px;font-weight:700;
+  cursor:pointer;margin-top:8px;transition:opacity .2s}
+.btn-p:hover{opacity:.88}
+.btn-s{width:100%;background:var(--bg3);color:var(--text);border:none;
+  border-radius:14px;padding:14px;font-size:15px;font-weight:600;
+  cursor:pointer;margin-top:8px}
+
+/* ── TOAST ─────────────────────────────────────────────── */
+.toast{position:fixed;bottom:calc(var(--nav) + 12px);left:50%;
+  transform:translateX(-50%);background:var(--text);color:var(--bg);
+  padding:10px 20px;border-radius:24px;font-size:14px;font-weight:600;
+  z-index:500;pointer-events:none;opacity:0;transition:opacity .3s;
+  white-space:nowrap}
+.toast.show{opacity:1}
+
+/* ── EMPTY ─────────────────────────────────────────────── */
+.empty{text-align:center;padding:48px 20px;color:var(--text3)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-text{font-size:16px;font-weight:600}
+
+/* ════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════ */
+
+/* ── MOBILE default (< 480px) ─── already covered above ─ */
+
+/* ── PHABLET 480px+ ────────────────────────────────────── */
+@media(min-width:480px){
+  .sum-grid{grid-template-columns:repeat(4,1fr)}
+  .hdr{padding:0 20px}
+  .page{padding:16px 20px}
+}
+
+/* ── TABLET 640px+ ─────────────────────────────────────── */
+@media(min-width:640px){
+  :root{--nav:70px}
+  .page{padding:20px 24px}
+  .modal{border-radius:20px;margin:auto;max-width:560px;
+    border-radius:20px;padding:28px 28px 28px}
+  .overlay{align-items:center}
+  .modal-handle{display:none}
+  .fab{right:28px;bottom:calc(var(--nav) + 20px)}
+  /* 2-col dashboard on tablet */
+  .dash-wrap{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .dash-full{grid-column:1/-1}
+  /* stock list wider padding */
+  .si{padding:14px 18px}
+  .mat-hdr,.mat-item{padding:12px 18px}
+  /* bigger range display */
+  .range-big{font-size:40px}
+}
+
+/* ── DESKTOP 1024px+ ───────────────────────────────────── */
+@media(min-width:1024px){
+  /* swap bottom nav for sidebar */
+  .sidebar{display:flex}
+  .bnav{display:none}
+  .main{padding-bottom:20px}
+  .toast{bottom:28px}
+  .fab{right:36px;bottom:36px}
+  :root{--r:16px}
+  .page{padding:28px 36px;max-width:1200px}
+  /* 3-col status on desktop */
+  .status-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+  /* chart taller on desktop */
+  .chart-bar-h{height:240px}
+  .chart-pie-h{height:210px}
+  /* modal centered */
+  .modal{max-width:580px}
+  .sum-grid{grid-template-columns:repeat(4,1fr)}
+}
+
+/* ── WIDE 1280px+ ──────────────────────────────────────── */
+@media(min-width:1280px){
+  :root{--side:240px}
+  .page{padding:32px 44px}
+  .dash-wrap{gap:20px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="hdr">
+    <div class="hdr-left">
+      <span class="hdr-logo">🛡️</span>
+      <div>
+        <div class="hdr-title">SurvivalStock</div>
+        <div class="hdr-sub" id="hdr-sub">Famille · 4 personnes</div>
+      </div>
+    </div>
+    <div class="toggle-wrap">
+      <span class="tgl-lbl">☀️</span>
+      <div class="tgl on" id="tgl" onclick="toggleTheme()"><div class="tgl-knob"></div></div>
+      <span class="tgl-lbl">🌙</span>
+    </div>
+  </header>
+
+  <!-- BODY -->
+  <div class="app-body">
+
+    <!-- SIDEBAR desktop -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sb-section">Navigation</div>
+      <button class="sb-item active" id="sb-0" onclick="goTab(0)">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard
+      </button>
+      <button class="sb-item" id="sb-1" onclick="goTab(1)">
+        <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>Stocks
+      </button>
+      <button class="sb-item" id="sb-2" onclick="goTab(2)">
+        <svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Courses
+      </button>
+      <button class="sb-item" id="sb-3" onclick="goTab(3)">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Matériel
+      </button>
+      <button class="sb-item" id="sb-4" onclick="goTab(4)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Paramètres
+      </button>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="main" id="main"></main>
+
+  </div>
+
+  <!-- BOTTOM NAV mobile/tablet -->
+  <nav class="bnav">
+    <button class="ni active" id="nav-0" onclick="goTab(0)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span class="ni-lbl">Dashboard</span>
+    </button>
+    <button class="ni" id="nav-1" onclick="goTab(1)">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>
+      <span class="ni-lbl">Stocks</span>
+    </button>
+    <button class="ni" id="nav-2" onclick="goTab(2)">
+      <svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <span class="ni-lbl">Courses</span>
+    </button>
+    <button class="ni" id="nav-3" onclick="goTab(3)">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span class="ni-lbl">Matériel</span>
+    </button>
+    <button class="ni" id="nav-4" onclick="goTab(4)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+      <span class="ni-lbl">Paramètres</span>
+    </button>
+  </nav>
+
+  <div id="fab-slot"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- MODALS -->
+<div class="overlay" id="modal-alert">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>⚠️ Alertes péremption</h2>
+    <div id="alert-detail"></div>
+    <button class="btn-s" onclick="closeModal('modal-alert')">Fermer</button>
+  </div>
+</div>
+
+<div class="overlay" id="modal-stock">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="ms-title">Ajouter un article</h2>
+    <div class="fg"><label class="fl">Aliment standard (optionnel)</label>
+      <select class="fi" id="ms-catalog" onchange="applyCatalog()">
+        <option value="">— Saisie libre —</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Article</label><input class="fi" id="ms-name" placeholder="Ex: Riz basmati"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Catégorie</label>
+        <select class="fi" id="ms-cat">
+          <option value="🌾 Féculent">🌾 Féculent</option>
+          <option value="🥩 Protéine">🥩 Protéine</option>
+          <option value="🥑 Lipide">🥑 Lipide</option>
+          <option value="🍯 Glucide">🍯 Glucide</option>
+          <option value="💧 Eau">💧 Eau</option>
+          <option value="🥫 Conserve">🥫 Conserve</option>
+          <option value="🌿 Autre">🌿 Autre</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Type</label>
+        <select class="fi" id="ms-type">
+          <option value="dormant">📦 Dormant</option>
+          <option value="tournant">🔄 Tournant</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Quantité</label><input class="fi" id="ms-qty" type="number" min="0" placeholder="0"></div>
+      <div class="fg"><label class="fl">Unité</label>
+        <select class="fi" id="ms-unit" onchange="applyCatalog()"><option>kg</option><option>L</option><option>unités</option><option>boîtes</option><option>g</option><option>ml</option></select>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Date de péremption</label><input class="fi" id="ms-exp" type="date"></div>
+    <p class="card-title" style="margin-top:6px;margin-bottom:8px">Valeurs nutritionnelles (pour 1 unité ci-dessus)</p>
+    <div class="frow">
+      <div class="fg"><label class="fl">Calories (kcal)</label><input class="fi" id="ms-kcal" type="number" min="0" placeholder="Ex: 3500"></div>
+      <div class="fg"><label class="fl">Protéines (g)</label><input class="fi" id="ms-prot" type="number" min="0" step="0.1" placeholder="Ex: 70"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Glucides (g)</label><input class="fi" id="ms-gluc" type="number" min="0" step="0.1" placeholder="Ex: 770"></div>
+      <div class="fg"><label class="fl">Lipides (g)</label><input class="fi" id="ms-lip" type="number" min="0" step="0.1" placeholder="Ex: 27"></div>
+    </div>
+    <button class="btn-p" onclick="saveStock()">💾 Enregistrer</button>
+    <button class="btn-s" onclick="closeModal('modal-stock')">Annuler</button>
+  </div>
+</div>
+
+<div class="overlay" id="modal-buy">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>🛒 Ajouter aux courses</h2>
+    <div class="fg"><label class="fl">Article</label><input class="fi" id="mb-name" readonly></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Quantité</label><input class="fi" id="mb-qty" type="number" min="1" value="1"></div>
+      <div class="fg"><label class="fl">Unité</label><input class="fi" id="mb-unit"></div>
+    </div>
+    <button class="btn-p" onclick="addToCourses()">Ajouter à la liste</button>
+    <button class="btn-s" onclick="closeModal('modal-buy')">Annuler</button>
+  </div>
+</div>
+
+<div class="overlay" id="modal-mat">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="mm-title">Ajouter du matériel</h2>
+    <div class="fg"><label class="fl">Nom du matériel</label><input class="fi" id="mm-name" placeholder="Ex: Lampe frontale"></div>
+    <div class="fg">
+      <label class="fl">Localisation</label>
+      <div class="frow" style="grid-template-columns:1fr auto;gap:8px">
+        <select class="fi" id="mm-loc"></select>
+        <button class="btn-xs btn-e" style="white-space:nowrap" onclick="openLocManager()">📍 Gérer</button>
+      </div>
+    </div>
+    <button class="btn-p" onclick="saveMat()">💾 Enregistrer</button>
+    <button class="btn-s" onclick="closeModal('modal-mat')">Annuler</button>
+  </div>
+</div>
+
+<div class="overlay" id="modal-loc">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>📍 Gérer les localisations</h2>
+    <div id="loc-list" style="margin-bottom:14px"></div>
+    <div class="fg"><label class="fl">Nouvelle localisation</label>
+      <div class="frow" style="grid-template-columns:1fr auto;gap:8px">
+        <input class="fi" id="loc-new-name" placeholder="Ex: Cave, Coffre voiture...">
+        <button class="btn-p" style="margin-top:0;width:auto;padding:12px 16px" onclick="addLocation()">+ Ajouter</button>
+      </div>
+    </div>
+    <button class="btn-s" onclick="closeModal('modal-loc')">Fermer</button>
+  </div>
+</div>
+
+<div class="overlay" id="modal-person">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="mp-title">Ajouter un membre</h2>
+    <div class="fg"><label class="fl">Prénom</label><input class="fi" id="mp-name" placeholder="Ex: Lucas"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Âge</label><input class="fi" id="mp-age" type="number" min="0" max="120" placeholder="35"></div>
+      <div class="fg"><label class="fl">Sexe</label>
+        <select class="fi" id="mp-sex">
+          <option value="H">👨 Homme</option><option value="F">👩 Femme</option><option value="E">👧 Enfant</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-p" onclick="savePerson()">💾 Enregistrer</button>
+    <button class="btn-s" onclick="closeModal('modal-person')">Annuler</button>
+  </div>
+</div>
+
+<script>
+// ── STATE ────────────────────────────────────────────────────
+let isDark=false,tab=0,stockFilter='Tout',matFilter='Tout';
+let editStockIdx=-1,editMatIdx=-1,editPersonIdx=-1,editLocIdx=-1;
+let charts={};
+
+// ── DEFAULTS ─────────────────────────────────────────────────
+const DEFAULT_LOCATIONS=['Caisse étanche 1','Caisse étanche 2','Caisse étanche 3','Sac à dos gros','Sac à dos moyen','Sac à dos petit','Placard maison','Champ libre'];
+const DEFAULT_PARAMS={targetMonths:3,dailyKcal:8000,dailyWater:12,persons:[{name:'Papa',sex:'H',age:38},{name:'Maman',sex:'F',age:35},{name:'Lucas',sex:'E',age:10},{name:'Léa',sex:'E',age:7}]};
+const DEFAULT_STOCKS=[
+  {name:'Riz complet',cat:'🌾 Féculent',type:'dormant',qty:15,unit:'kg',exp:'2026-12-01',kcal:350,prot:7,gluc:77,lip:2.7},
+  {name:'Lentilles vertes',cat:'🥩 Protéine',type:'dormant',qty:8,unit:'kg',exp:'2027-06-01',kcal:340,prot:24,gluc:54,lip:1.5},
+  {name:'Pâtes complètes',cat:'🌾 Féculent',type:'tournant',qty:10,unit:'kg',exp:'2026-07-20',kcal:350,prot:12.5,gluc:71,lip:1.5},
+  {name:"Huile d'olive",cat:'🥑 Lipide',type:'tournant',qty:6,unit:'L',exp:'2026-06-10',kcal:880,prot:0,gluc:0,lip:100},
+  {name:'Miel',cat:'🍯 Glucide',type:'dormant',qty:4,unit:'kg',exp:'2030-01-01',kcal:300,prot:0.3,gluc:82,lip:0},
+  {name:'Sucre',cat:'🍯 Glucide',type:'dormant',qty:10,unit:'kg',exp:'2031-01-01',kcal:400,prot:0,gluc:100,lip:0},
+  {name:'Farine T55',cat:'🌾 Féculent',type:'tournant',qty:8,unit:'kg',exp:'2026-08-01',kcal:360,prot:10,gluc:76,lip:1},
+  {name:'Sardines huile',cat:'🥫 Conserve',type:'dormant',qty:24,unit:'boîtes',exp:'2028-03-01',kcal:200,prot:20,gluc:0,lip:13},
+  {name:'Thon naturel',cat:'🥫 Conserve',type:'dormant',qty:30,unit:'boîtes',exp:'2028-06-01',kcal:130,prot:26,gluc:0,lip:1},
+  {name:'Lait en poudre',cat:'🥩 Protéine',type:'dormant',qty:5,unit:'kg',exp:'2026-07-10',kcal:500,prot:26,gluc:38,lip:27},
+  {name:'Légumes secs mix',cat:'🌿 Autre',type:'dormant',qty:6,unit:'kg',exp:'2027-05-01',kcal:330,prot:20,gluc:58,lip:1.5},
+  {name:'Eau minérale',cat:'💧 Eau',type:'dormant',qty:120,unit:'L',exp:'2027-01-01',kcal:0,prot:0,gluc:0,lip:0},
+  {name:'Chocolat noir',cat:'🍯 Glucide',type:'tournant',qty:3,unit:'kg',exp:'2026-06-25',kcal:550,prot:7.8,gluc:46,lip:35},
+];
+const DEFAULT_COURSES=[{name:'Riz complet',qty:5,unit:'kg',done:false},{name:'Batteries AA',qty:20,unit:'unités',done:false}];
+const DEFAULT_MATS=[
+  {name:'Lampe frontale LED',loc:'Sac à dos gros',owned:true,depart:true},
+  {name:'Couteau multifonction Leatherman',loc:'Sac à dos moyen',owned:true,depart:true},
+  {name:'Kit premiers secours complet',loc:'Caisse étanche 1',owned:true,depart:false},
+  {name:'Radio manivelle + solar',loc:'Placard maison',owned:true,depart:false},
+  {name:'Filtre à eau Sawyer',loc:'Sac à dos gros',owned:false,depart:false},
+  {name:'Réchaud à gaz + recharges x6',loc:'Caisse étanche 2',owned:true,depart:false},
+  {name:'Couverture de survie',loc:'Sac à dos petit',owned:true,depart:true},
+  {name:'Briquet + allumettes étanches',loc:'Caisse étanche 1',owned:true,depart:true},
+  {name:'Corde 20m dyneema',loc:'Caisse étanche 3',owned:false,depart:false},
+  {name:'Tente 4 personnes',loc:'Champ libre',owned:true,depart:false},
+  {name:'Sac de couchage -5°C',loc:'Sac à dos gros',owned:true,depart:true},
+  {name:'Cartes topographiques',loc:'Sac à dos moyen',owned:true,depart:false},
+  {name:'Trousse couture + réparation',loc:'Caisse étanche 2',owned:true,depart:false},
+  {name:'Masques FFP2 x50',loc:'Caisse étanche 3',owned:true,depart:false},
+];
+
+// ── PERSISTENCE localStorage ──────────────────────────────────
+const LS='survivalstock_v1';
+function loadData(){
+  try{
+    const raw=localStorage.getItem(LS);
+    if(!raw)return false;
+    const d=JSON.parse(raw);
+    if(d.locations)locations=d.locations;
+    if(d.params)params=d.params;
+    if(d.stocks)stocks=d.stocks;
+    if(d.courses)courses=d.courses;
+    if(d.mats)mats=d.mats;
+    return true;
+  }catch(e){console.warn('loadData error',e);return false;}
+}
+function saveData(){
+  try{
+    localStorage.setItem(LS,JSON.stringify({locations,params,stocks,courses,mats,savedAt:new Date().toISOString()}));
+  }catch(e){console.warn('saveData error',e);}
+}
+function exportData(){
+  const json=JSON.stringify({locations,params,stocks,courses,mats,exportedAt:new Date().toISOString()},null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='survivalstock_sauvegarde_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();URL.revokeObjectURL(url);
+  toast('Sauvegarde exportée ✓');
+}
+function importData(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.stocks&&d.mats&&d.params){
+        if(!confirm('Remplacer toutes vos données par ce fichier ?'))return;
+        if(d.locations)locations=d.locations;
+        params=d.params;stocks=d.stocks;courses=d.courses||[];mats=d.mats;
+        saveData();render();toast('Import réussi ✓');
+      }else{toast('Fichier invalide');}
+    }catch(err){toast('Erreur de lecture du fichier');}
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+function resetData(){
+  if(!confirm('Remettre toutes les données par défaut ? Cette action est irréversible.'))return;
+  localStorage.removeItem(LS);
+  locations=JSON.parse(JSON.stringify(DEFAULT_LOCATIONS));
+  params=JSON.parse(JSON.stringify(DEFAULT_PARAMS));
+  stocks=JSON.parse(JSON.stringify(DEFAULT_STOCKS));
+  courses=JSON.parse(JSON.stringify(DEFAULT_COURSES));
+  mats=JSON.parse(JSON.stringify(DEFAULT_MATS));
+  saveData();render();toast('Données réinitialisées');
+}
+
+// ── INIT DATA ────────────────────────────────────────────────
+let locations=JSON.parse(JSON.stringify(DEFAULT_LOCATIONS));
+let params=JSON.parse(JSON.stringify(DEFAULT_PARAMS));
+let stocks=JSON.parse(JSON.stringify(DEFAULT_STOCKS));
+let courses=JSON.parse(JSON.stringify(DEFAULT_COURSES));
+let mats=JSON.parse(JSON.stringify(DEFAULT_MATS));
+loadData(); // écrase les defaults si des données sont sauvegardées
+
+// ── CATALOGUE D'ALIMENTS STANDARDS ───────────────────────────
+const FOOD_CATALOG=[
+  {name:'Riz complet',cat:'🌾 Féculent',kcal:350,prot:7,gluc:77,lip:2.7},
+  {name:'Riz blanc',cat:'🌾 Féculent',kcal:365,prot:7.1,gluc:80,lip:0.7},
+  {name:'Pâtes',cat:'🌾 Féculent',kcal:350,prot:12.5,gluc:71,lip:1.5},
+  {name:'Farine de blé',cat:'🌾 Féculent',kcal:360,prot:10,gluc:76,lip:1},
+  {name:'Semoule',cat:'🌾 Féculent',kcal:360,prot:12.7,gluc:72,lip:1.1},
+  {name:"Flocons d'avoine",cat:'🌾 Féculent',kcal:375,prot:13.5,gluc:60,lip:7},
+  {name:'Pommes de terre déshydratées',cat:'🌾 Féculent',kcal:357,prot:7.5,gluc:83,lip:0.6},
+  {name:'Lentilles',cat:'🥩 Protéine',kcal:340,prot:24,gluc:54,lip:1.5},
+  {name:'Pois chiches secs',cat:'🥩 Protéine',kcal:364,prot:19,gluc:61,lip:6},
+  {name:'Haricots secs',cat:'🥩 Protéine',kcal:333,prot:21,gluc:60,lip:1.2},
+  {name:'Lait en poudre entier',cat:'🥩 Protéine',kcal:500,prot:26,gluc:38,lip:27},
+  {name:'Protéines de soja texturées',cat:'🥩 Protéine',kcal:330,prot:50,gluc:30,lip:1},
+  {name:'Oeufs en poudre',cat:'🥩 Protéine',kcal:560,prot:47,gluc:4,lip:38},
+  {name:"Huile d'olive",cat:'🥑 Lipide',kcal:884,prot:0,gluc:0,lip:100},
+  {name:'Huile de tournesol',cat:'🥑 Lipide',kcal:884,prot:0,gluc:0,lip:100},
+  {name:'Beurre clarifié (ghee)',cat:'🥑 Lipide',kcal:876,prot:0.3,gluc:0,lip:99.5},
+  {name:'Fruits à coque (mix)',cat:'🥑 Lipide',kcal:600,prot:15,gluc:18,lip:54},
+  {name:'Sucre blanc',cat:'🍯 Glucide',kcal:400,prot:0,gluc:100,lip:0},
+  {name:'Miel',cat:'🍯 Glucide',kcal:304,prot:0.3,gluc:82,lip:0},
+  {name:'Chocolat noir 70%',cat:'🍯 Glucide',kcal:550,prot:7.8,gluc:46,lip:35},
+  {name:'Confiture',cat:'🍯 Glucide',kcal:250,prot:0.3,gluc:62,lip:0},
+  {name:"Sardines à l'huile",cat:'🥫 Conserve',kcal:200,prot:20,gluc:0,lip:13},
+  {name:'Thon au naturel',cat:'🥫 Conserve',kcal:116,prot:26,gluc:0,lip:1},
+  {name:'Maquereaux à la tomate',cat:'🥫 Conserve',kcal:190,prot:16,gluc:3,lip:13},
+  {name:'Cassoulet en boîte',cat:'🥫 Conserve',kcal:140,prot:7,gluc:11,lip:7},
+  {name:'Ravioli en boîte',cat:'🥫 Conserve',kcal:95,prot:3.5,gluc:14,lip:2.5},
+  {name:'Légumes en conserve (mix)',cat:'🥫 Conserve',kcal:45,prot:2,gluc:7,lip:0.3},
+  {name:'Pâté en boîte',cat:'🥫 Conserve',kcal:320,prot:13,gluc:2,lip:29},
+  {name:'Corned-beef',cat:'🥫 Conserve',kcal:220,prot:24,gluc:0,lip:13},
+  {name:'Soupe déshydratée',cat:'🌿 Autre',kcal:350,prot:8,gluc:65,lip:6},
+  {name:'Bouillon cube',cat:'🌿 Autre',kcal:250,prot:10,gluc:20,lip:14},
+  {name:'Eau minérale',cat:'💧 Eau',kcal:0,prot:0,gluc:0,lip:0},
+];
+
+// ── THEME ────────────────────────────────────────────────────
+function toggleTheme(){
+  isDark=!isDark;
+  document.getElementById('app').className=isDark?'dark':'';
+  const t=document.getElementById('tgl');
+  isDark?t.classList.replace('on','off'):t.classList.replace('off','on');
+  render();
+}
+
+// ── NAV ──────────────────────────────────────────────────────
+function goTab(i){
+  tab=i;destroyCharts();
+  document.querySelectorAll('.ni').forEach((el,idx)=>el.classList.toggle('active',idx===i));
+  for(let j=0;j<5;j++){const s=document.getElementById('sb-'+j);if(s)s.classList.toggle('active',j===i);}
+  render();
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function render(){
+  const m=document.getElementById('main');
+  m.innerHTML='';
+  document.getElementById('fab-slot').innerHTML='';
+  if(tab===0) renderDash(m);
+  else if(tab===1) renderStocks(m);
+  else if(tab===2) renderCourses(m);
+  else if(tab===3) renderMat(m);
+  else renderSettings(m);
+  document.getElementById('hdr-sub').textContent=
+    'Famille · '+params.persons.length+' personne'+(params.persons.length>1?'s':'');
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function expSt(exp){
+  if(!exp)return'ok';
+  const d=new Date(exp),now=new Date(),soon=new Date();
+  soon.setMonth(soon.getMonth()+1);
+  return d<now?'expired':d<soon?'warn':'ok';
+}
+function fmt(d){return d?new Date(d).toLocaleDateString('fr-FR'):'—';}
+function calcFood(){
+  const k=stocks.filter(s=>s.cat!=='💧 Eau').reduce((a,s)=>a+(s.kcal||300)*s.qty,0);
+  return{days:Math.round(k/params.dailyKcal),kcal:Math.round(k)};
+}
+function calcWater(){
+  const l=stocks.filter(s=>s.cat==='💧 Eau').reduce((a,s)=>a+s.qty,0);
+  return{days:Math.round(l/params.dailyWater),liters:Math.round(l)};
+}
+function getAlerts(){return stocks.filter(s=>expSt(s.exp)!=='ok');}
+function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});charts={};}
+
+function gauge(name,days,target,color,sub){
+  const pct=Math.min(100,Math.round(days/target*100));
+  const c=pct>60?color:pct>30?'#FF9500':'#FF3B30';
+  return`<div class="gauge-block">
+    <div class="gauge-hd"><span class="gauge-name">${name}</span><span class="gauge-val">${days} j</span></div>
+    <div class="gauge-track"><div class="gauge-fill" style="width:${pct}%;background:${c}"></div></div>
+    <div class="gauge-foot"><span class="gauge-sub">${sub}</span><span class="gauge-sub">Cible : ${target} j</span></div>
+  </div>`;
+}
+function miniGauge(name,pct,color){
+  const c=pct>60?color:pct>30?'#FF9500':'#FF3B30';
+  return`<div class="gauge-block">
+    <div class="gauge-hd"><span class="gauge-name" style="font-size:13px">${name}</span><span class="gauge-val" style="font-size:13px">${pct}%</span></div>
+    <div class="gauge-track" style="height:9px"><div class="gauge-fill" style="width:${pct}%;background:${c}"></div></div>
+  </div>`;
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────
+function renderDash(el){
+  const al=getAlerts(),food=calcFood(),water=calcWater(),target=params.targetMonths*30;
+  const alertHtml=al.length>0
+    ?`<div class="alert-banner" onclick="openAlertModal()">
+        <div class="alert-text"><h3>⚠️ ${al.length} article${al.length>1?'s':''} en alerte péremption</h3><p>Cliquer pour voir le détail</p></div>
+        <button class="alert-btn">Voir →</button>
+      </div>`
+    :`<div class="alert-ok"><span style="font-size:20px">✅</span><span style="color:var(--green);font-weight:700;font-size:14px;margin-left:8px">Aucune alerte de péremption</span></div>`;
+
+  el.innerHTML=`<div class="page">
+    ${alertHtml}
+    <div class="dash-wrap">
+      <div class="dash-col">
+        <div class="card">
+          <div class="card-title">Autonomie alimentaire &amp; eau</div>
+          ${gauge('🌾 Nourriture',food.days,target,'#34C759',food.kcal.toLocaleString('fr-FR')+' kcal totales')}
+          ${gauge('💧 Eau potable',water.days,target,'#5AC8FA',water.liters+' L stockés')}
+        </div>
+        <div class="card">
+          <div class="card-title">Autonomie énergétique</div>
+          ${miniGauge('🔥 Gaz',65,'#FF9500')}
+          ${miniGauge('⚡ Batterie / Électricité',40,'#FFCC00')}
+          ${miniGauge('⛽ Essence générateur',30,'#5AC8FA')}
+        </div>
+      </div>
+      <div class="dash-col">
+        <div class="status-3">
+          <div class="sc"><div class="sc-icon">🧹</div><div class="sc-label">Ménager</div><div class="sc-val"><span class="badge ok">✓ OK</span></div></div>
+          <div class="sc"><div class="sc-icon">💊</div><div class="sc-label">Soins</div><div class="sc-val"><span class="badge warn">⚠ Partiel</span></div></div>
+          <div class="sc"><div class="sc-icon">🎒</div><div class="sc-label">Matériel</div><div class="sc-val"><span class="badge ok">✓ OK</span></div></div>
+        </div>
+        <div class="status-full">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:20px">🎒</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Matériel technique</div>
+              <div style="font-size:12px;color:var(--text3)">${mats.filter(m=>m.owned).length}/${mats.length} articles possédés</div>
+            </div>
+          </div>
+          <span class="badge ok">✓ OK</span>
+        </div>
+        <div class="chart-card" style="margin-bottom:0">
+          <div class="card-title">Stock vs besoins famille</div>
+          <div class="chart-wrap chart-bar-h"><canvas id="bar-c"></canvas></div>
+        </div>
+      </div>
+      <div class="dash-full" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="chart-card" style="margin-bottom:0">
+          <div class="card-title" style="text-align:center">Type de stock</div>
+          <div class="chart-wrap chart-pie-h"><canvas id="pie-t"></canvas></div>
+        </div>
+        <div class="chart-card" style="margin-bottom:0">
+          <div class="card-title" style="text-align:center">Par catégorie</div>
+          <div class="chart-wrap chart-pie-h"><canvas id="pie-c"></canvas></div>
+        </div>
+      </div>
+      <div class="dash-full">
+        <div class="summary-card">
+          <h3>🍽️ Besoins journaliers</h3>
+          <div class="sum-grid">
+            <div class="sum-item"><div class="sv">${Math.round(params.dailyKcal/params.persons.length)}</div><div class="sl">kcal / personne</div></div>
+            <div class="sum-item"><div class="sv">${params.dailyKcal.toLocaleString('fr-FR')}</div><div class="sl">kcal famille</div></div>
+            <div class="sum-item"><div class="sv">${(params.dailyWater/params.persons.length).toFixed(1)} L</div><div class="sl">eau / personne</div></div>
+            <div class="sum-item"><div class="sv">${params.dailyWater} L</div><div class="sl">eau famille</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  const tc=isDark?'rgba(255,255,255,.65)':'rgba(0,0,0,.55)';
+  const gc=isDark?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';
+  Chart.defaults.color=tc;
+
+  charts['bar']=new Chart(document.getElementById('bar-c'),{
+    type:'bar',
+    data:{labels:['Féculents','Protéines','Lipides','Glucides'],datasets:[
+      {label:'Stock (kg)',data:[33,13,6,14],backgroundColor:'rgba(0,122,255,.75)',borderRadius:5},
+      {label:'Besoin (kg)',data:[25,10,5,12],backgroundColor:'rgba(90,200,250,.45)',borderRadius:5}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:11},boxWidth:12}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},
+              y:{grid:{color:gc},ticks:{font:{size:11}}}}}
+  });
+
+  const dv=stocks.filter(s=>s.type==='dormant').length;
+  const tv=stocks.filter(s=>s.type==='tournant').length;
+  charts['pie1']=new Chart(document.getElementById('pie-t'),{
+    type:'doughnut',
+    data:{labels:['Dormant','Tournant'],datasets:[{data:[dv,tv],
+      backgroundColor:['rgba(0,122,255,.8)','rgba(90,200,250,.8)'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:6}}}}
+  });
+
+  const cats={};
+  stocks.filter(s=>s.cat!=='💧 Eau').forEach(s=>{
+    const k=s.cat.split(' ').slice(1).join(' ');cats[k]=(cats[k]||0)+s.qty;
+  });
+  const cols=['rgba(0,122,255,.8)','rgba(52,199,89,.8)','rgba(255,149,0,.8)',
+              'rgba(175,82,222,.8)','rgba(255,59,48,.8)','rgba(90,200,250,.8)'];
+  charts['pie2']=new Chart(document.getElementById('pie-c'),{
+    type:'doughnut',
+    data:{labels:Object.keys(cats),datasets:[{data:Object.values(cats),backgroundColor:cols,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:4}}}}
+  });
+}
+
+function openAlertModal(){
+  document.getElementById('alert-detail').innerHTML=getAlerts().map(s=>`
+    <div style="padding:12px 0;border-bottom:.5px solid var(--sep);display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div><strong style="color:var(--text);font-size:14px">${s.name}</strong>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${s.qty} ${s.unit} · ${s.cat}</div></div>
+      <span style="font-size:12px;font-weight:700;color:${expSt(s.exp)==='expired'?'var(--red)':'var(--orange)'};text-align:right;flex-shrink:0">
+        ${expSt(s.exp)==='expired'?'❌ Expiré':'⚠️ Bientôt'}<br>
+        <span style="font-weight:500">${fmt(s.exp)}</span>
+      </span>
+    </div>`).join('');
+  openModal('modal-alert');
+}
+
+// ── STOCKS ───────────────────────────────────────────────────
+function renderStocks(el){
+  const CATS=['Tout','📦 Dormant','🔄 Tournant','🌾 Féculent','🥩 Protéine','🥑 Lipide','🍯 Glucide','💧 Eau','🥫 Conserve','🌿 Autre'];
+  let filtered=stocks;
+  if(stockFilter==='📦 Dormant')filtered=stocks.filter(s=>s.type==='dormant');
+  else if(stockFilter==='🔄 Tournant')filtered=stocks.filter(s=>s.type==='tournant');
+  else if(stockFilter!=='Tout')filtered=stocks.filter(s=>s.cat===stockFilter);
+
+  el.innerHTML=`<div class="page">
+    <div class="page-title">📋 Stocks</div>
+    <div class="filters">
+      ${CATS.map(c=>`<span class="chip${stockFilter===c?' active':''}" onclick="setStockFilter('${c}')">${c}</span>`).join('')}
+    </div>
+    <p class="count-lbl">${filtered.length} article${filtered.length!==1?'s':''}</p>
+    <div class="stock-list">
+      ${filtered.length===0
+        ?`<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Aucun article</div></div>`
+        :filtered.map(s=>{
+          const i=stocks.indexOf(s),st=expSt(s.exp);
+          return`<div class="si">
+            <div class="si-icon">${s.cat.split(' ')[0]}</div>
+            <div class="si-body">
+              <div class="si-name">${s.name}</div>
+              <div class="si-tags">
+                <span class="si-tag">${s.type==='dormant'?'📦 Dormant':'🔄 Tournant'}</span>
+                <span class="si-tag">${s.cat}</span>
+                ${s.kcal?`<span class="si-tag">🔥 ${s.kcal} kcal</span>`:''}
+                ${s.prot?`<span class="si-tag">P ${s.prot}g</span>`:''}
+                ${s.gluc?`<span class="si-tag">G ${s.gluc}g</span>`:''}
+                ${s.lip?`<span class="si-tag">L ${s.lip}g</span>`:''}
+              </div>
+              <div class="si-actions">
+                <button class="btn-xs btn-e" onclick="openEditStock(${i})">✏️ Modifier</button>
+                <button class="btn-xs btn-d" onclick="delStock(${i})">🗑️</button>
+                <button class="btn-xs btn-b" onclick="openBuy(${i})">🛒 Achat</button>
+              </div>
+            </div>
+            <div class="si-right">
+              <div class="si-qty">${s.qty}</div>
+              <div class="si-unit">${s.unit}</div>
+              <div class="si-exp ${st}">${st==='expired'?'❌ ':st==='warn'?'⚠️ ':''}${fmt(s.exp)}</div>
+            </div>
+          </div>`;}).join('')}
+    </div>
+  </div>`;
+
+  const fab=document.createElement('button');
+  fab.className='fab';fab.textContent='+';fab.onclick=openAddStock;
+  document.getElementById('fab-slot').appendChild(fab);
+}
+
+function setStockFilter(f){stockFilter=f;render();}
+
+function openAddStock(){
+  editStockIdx=-1;
+  document.getElementById('ms-title').textContent='Ajouter un article';
+  populateFoodCatalog();
+  document.getElementById('ms-catalog').value='';
+  ['ms-name','ms-qty','ms-exp','ms-kcal','ms-prot','ms-gluc','ms-lip'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ms-type').value='dormant';
+  openModal('modal-stock');
+}
+function openEditStock(i){
+  editStockIdx=i;const s=stocks[i];
+  document.getElementById('ms-title').textContent='Modifier — '+s.name;
+  populateFoodCatalog();
+  document.getElementById('ms-catalog').value='';
+  document.getElementById('ms-name').value=s.name;
+  document.getElementById('ms-cat').value=s.cat;
+  document.getElementById('ms-type').value=s.type;
+  document.getElementById('ms-qty').value=s.qty;
+  document.getElementById('ms-unit').value=s.unit;
+  document.getElementById('ms-exp').value=s.exp||'';
+  document.getElementById('ms-kcal').value=s.kcal||'';
+  document.getElementById('ms-prot').value=s.prot||'';
+  document.getElementById('ms-gluc').value=s.gluc||'';
+  document.getElementById('ms-lip').value=s.lip||'';
+  openModal('modal-stock');
+}
+function saveStock(){
+  const item={
+    name:document.getElementById('ms-name').value||'Article',
+    cat:document.getElementById('ms-cat').value,
+    type:document.getElementById('ms-type').value,
+    qty:parseFloat(document.getElementById('ms-qty').value)||0,
+    unit:document.getElementById('ms-unit').value,
+    exp:document.getElementById('ms-exp').value,
+    kcal:parseFloat(document.getElementById('ms-kcal').value)||0,
+    prot:parseFloat(document.getElementById('ms-prot').value)||0,
+    gluc:parseFloat(document.getElementById('ms-gluc').value)||0,
+    lip:parseFloat(document.getElementById('ms-lip').value)||0
+  };
+  editStockIdx>=0?stocks[editStockIdx]=item:stocks.push(item);
+  closeModal('modal-stock');saveData();toast('Article enregistré ✓');render();
+}
+function delStock(i){if(confirm('Supprimer "'+stocks[i].name+'" ?')){stocks.splice(i,1);saveData();render();}}
+function openBuy(i){
+  document.getElementById('mb-name').value=stocks[i].name;
+  document.getElementById('mb-unit').value=stocks[i].unit;
+  document.getElementById('mb-qty').value=1;
+  openModal('modal-buy');
+}
+function addToCourses(){
+  const name=document.getElementById('mb-name').value;
+  const qty=parseFloat(document.getElementById('mb-qty').value)||1;
+  const unit=document.getElementById('mb-unit').value;
+  const idx=courses.findIndex(c=>c.name===name);
+  idx>=0?courses[idx].qty+=qty:courses.push({name,qty,unit,done:false});
+  closeModal('modal-buy');saveData();toast('Ajouté aux courses ✓');
+}
+
+// ── COURSES ──────────────────────────────────────────────────
+function renderCourses(el){
+  const done=courses.filter(c=>c.done).length;
+  el.innerHTML=`<div class="page">
+    <div class="section-row">
+      <div class="page-title">🛒 Liste de courses</div>
+      <button class="btn-xs btn-d" onclick="clearCourses()">🗑️ Tout effacer</button>
+    </div>
+    <p class="count-lbl">${done}/${courses.length} acheté${done!==1?'s':''}</p>
+    ${courses.length===0
+      ?`<div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">Liste vide</div></div>`
+      :`<div class="card">
+        ${courses.map((c,i)=>`<div class="ci">
+          <div class="cbox${c.done?' done':''}" onclick="toggleCourse(${i})">${c.done?'✓':''}</div>
+          <span class="ci-name${c.done?' done':''}">${c.name}</span>
+          <span class="ci-qty">${c.qty} ${c.unit}</span>
+          <button class="btn-xs btn-d" onclick="delCourse(${i})" style="margin-left:4px">✕</button>
+        </div>`).join('')}
+      </div>`}
+  </div>`;
+}
+function toggleCourse(i){courses[i].done=!courses[i].done;saveData();render();}
+function delCourse(i){courses.splice(i,1);saveData();render();}
+function clearCourses(){if(confirm('Effacer toute la liste ?')){courses=[];saveData();render();}}
+
+// ── MATÉRIEL ─────────────────────────────────────────────────
+function renderMat(el){
+  const tabs=['Tout',...locations];
+  const filtered=matFilter==='Tout'?mats:mats.filter(m=>m.loc===matFilter);
+  const owned=filtered.filter(m=>m.owned).length;
+  const dep=filtered.filter(m=>m.depart).length;
+
+  el.innerHTML=`<div class="page">
+    <div class="section-row">
+      <div class="page-title">🎒 Matériel</div>
+      <span style="font-size:13px;color:var(--orange)">${dep} en départ 🧳</span>
+    </div>
+    <div class="filters">
+      ${tabs.map(t=>`<span class="chip${matFilter===t?' active':''}" onclick="setMatFilter('${t}')">${t}</span>`).join('')}
+    </div>
+    <p class="count-lbl">${owned}/${filtered.length} possédés</p>
+    <div class="mat-list">
+      <div class="mat-hdr">
+        <span>Matériel</span>
+        <span style="text-align:center">Possède</span>
+        <span style="text-align:center;color:var(--orange)">Départ</span>
+      </div>
+      ${filtered.length===0
+        ?`<div class="empty" style="padding:30px"><div class="empty-icon">📦</div><div class="empty-text">Aucun matériel</div></div>`
+        :filtered.map(m=>{
+          const ri=mats.indexOf(m);
+          return`<div class="mat-item">
+            <div>
+              <div class="mat-name">${m.name}</div>
+              <div class="mat-loc">📍 ${m.loc}</div>
+              <div class="mat-btns">
+                <button class="btn-xs btn-e" onclick="openEditMat(${ri})">✏️</button>
+                <button class="btn-xs btn-d" onclick="delMat(${ri})">🗑️</button>
+              </div>
+            </div>
+            <div class="chk${m.owned?' owned':''}" onclick="toggleMat(${ri},'owned')">${m.owned?'✓':''}</div>
+            <div class="chk${m.depart?' depart':''}" onclick="toggleMat(${ri},'depart')">${m.depart?'✓':''}</div>
+          </div>`;}).join('')}
+    </div>
+  </div>`;
+
+  const fab=document.createElement('button');
+  fab.className='fab';fab.textContent='+';fab.onclick=openAddMat;
+  document.getElementById('fab-slot').appendChild(fab);
+}
+function setMatFilter(f){matFilter=f;render();}
+function toggleMat(i,field){mats[i][field]=!mats[i][field];saveData();render();}
+
+function populateLocSelect(){
+  const sel=document.getElementById('mm-loc');
+  sel.innerHTML=locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+}
+
+function openAddMat(){
+  editMatIdx=-1;
+  document.getElementById('mm-title').textContent='Ajouter du matériel';
+  document.getElementById('mm-name').value='';
+  populateLocSelect();
+  openModal('modal-mat');
+}
+function openEditMat(i){
+  editMatIdx=i;
+  document.getElementById('mm-title').textContent='Modifier';
+  document.getElementById('mm-name').value=mats[i].name;
+  populateLocSelect();
+  document.getElementById('mm-loc').value=mats[i].loc;
+  openModal('modal-mat');
+}
+function saveMat(){
+  const item={
+    name:document.getElementById('mm-name').value||'Matériel',
+    loc:document.getElementById('mm-loc').value,
+    owned:editMatIdx>=0?mats[editMatIdx].owned:false,
+    depart:editMatIdx>=0?mats[editMatIdx].depart:false
+  };
+  editMatIdx>=0?mats[editMatIdx]=item:mats.push(item);
+  closeModal('modal-mat');saveData();toast('Matériel enregistré ✓');render();
+}
+function delMat(i){if(confirm('Supprimer "'+mats[i].name+'" ?')){mats.splice(i,1);saveData();render();}}
+
+// ── LOCALISATIONS (CRUD) ────────────────────────────────────────
+function openLocManager(){
+  renderLocList();
+  openModal('modal-loc');
+}
+function renderLocList(){
+  const wrap=document.getElementById('loc-list');
+  wrap.innerHTML=locations.map((l,i)=>{
+    const count=mats.filter(m=>m.loc===l).length;
+    return`<div class="ci" style="padding:9px 0">
+      <span class="ci-name" style="flex:1">📍 ${l}</span>
+      <span class="ci-qty" style="font-weight:500;color:var(--text3)">${count} art.</span>
+      <button class="btn-xs btn-e" onclick="renameLocation(${i})">✏️</button>
+      <button class="btn-xs btn-d" onclick="deleteLocation(${i})">🗑️</button>
+    </div>`;
+  }).join('');
+}
+function addLocation(){
+  const input=document.getElementById('loc-new-name');
+  const name=input.value.trim();
+  if(!name){toast('Saisissez un nom de localisation');return;}
+  if(locations.includes(name)){toast('Cette localisation existe déjà');return;}
+  locations.push(name);
+  input.value='';
+  saveData();
+  renderLocList();
+  toast('Localisation ajoutée ✓');
+}
+function renameLocation(i){
+  const oldName=locations[i];
+  const newName=prompt('Renommer la localisation :',oldName);
+  if(!newName||!newName.trim()||newName.trim()===oldName)return;
+  const trimmed=newName.trim();
+  if(locations.includes(trimmed)){alert('Cette localisation existe déjà.');return;}
+  locations[i]=trimmed;
+  mats.forEach(m=>{if(m.loc===oldName)m.loc=trimmed;});
+  if(matFilter===oldName)matFilter=trimmed;
+  saveData();
+  renderLocList();
+  toast('Localisation renommée ✓');
+}
+function deleteLocation(i){
+  const name=locations[i];
+  const count=mats.filter(m=>m.loc===name).length;
+  const msg=count>0
+    ?`Supprimer "${name}" ? ${count} article(s) associé(s) seront déplacés vers "Non classé".`
+    :`Supprimer "${name}" ?`;
+  if(!confirm(msg))return;
+  locations.splice(i,1);
+  if(count>0){
+    if(!locations.includes('Non classé'))locations.push('Non classé');
+    mats.forEach(m=>{if(m.loc===name)m.loc='Non classé';});
+  }
+  if(matFilter===name)matFilter='Tout';
+  renderLocList();
+  toast('Localisation supprimée ✓');
+}
+
+// ── CATALOGUE ALIMENTS STANDARDS ────────────────────────────────
+function populateFoodCatalog(){
+  const sel=document.getElementById('ms-catalog');
+  sel.innerHTML='<option value="">— Saisie libre —</option>'+
+    FOOD_CATALOG.map((f,i)=>`<option value="${i}">${f.cat.split(' ')[0]} ${f.name}</option>`).join('');
+}
+function applyCatalog(){
+  const idx=document.getElementById('ms-catalog').value;
+  if(idx==='')return;
+  const f=FOOD_CATALOG[+idx];
+  const unit=document.getElementById('ms-unit').value||'kg';
+  // Le catalogue donne des valeurs pour 100g/100mL — on convertit pour 1 unité (kg/L = x10, g/ml/unité/boîte = valeur telle quelle)
+  const mult=(unit==='kg'||unit==='L')?10:1;
+  document.getElementById('ms-name').value=f.name;
+  document.getElementById('ms-cat').value=f.cat;
+  document.getElementById('ms-kcal').value=Math.round(f.kcal*mult);
+  document.getElementById('ms-prot').value=Math.round(f.prot*mult*10)/10;
+  document.getElementById('ms-gluc').value=Math.round(f.gluc*mult*10)/10;
+  document.getElementById('ms-lip').value=Math.round(f.lip*mult*10)/10;
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────
+function renderSettings(el){
+  const raw=localStorage.getItem(LS);
+  let savedAt='Jamais';
+  try{if(raw){const d=JSON.parse(raw);if(d.savedAt)savedAt=new Date(d.savedAt).toLocaleString('fr-FR');}}catch(e){}
+
+  el.innerHTML=`<div class="page">
+    <div class="page-title">⚙️ Paramètres</div>
+
+    <div class="card" style="background:rgba(52,199,89,0.08);border:1px solid rgba(52,199,89,0.25);margin-bottom:12px">
+      <div class="card-title">💾 Sauvegarde automatique</div>
+      <div style="font-size:13px;color:var(--t3);margin-bottom:10px">Dernière sauvegarde : <strong style="color:var(--green)">${savedAt}</strong></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="btn-p" style="margin-top:0;font-size:13px;padding:10px" onclick="exportData()">📤 Exporter</button>
+        <label class="btn-p" style="margin-top:0;font-size:13px;padding:10px;text-align:center;cursor:pointer">
+          📥 Importer<input type="file" accept=".json" style="display:none" onchange="importData(event)">
+        </label>
+      </div>
+      <button onclick="resetData()" style="width:100%;margin-top:8px;background:rgba(255,59,48,0.1);color:var(--red);border:none;border-radius:12px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">🔄 Remettre les données par défaut</button>
+      <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">
+        💡 <strong>Export</strong> = fichier JSON téléchargé (à garder en lieu sûr).<br>
+        💡 <strong>Import</strong> = restaurer depuis un fichier JSON exporté.<br>
+        💡 Les données sont aussi sauvegardées automatiquement dans ce navigateur.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Objectif d'autonomie</div>
+      <div class="range-big" id="sv-m">${params.targetMonths} mois</div>
+      <div class="range-desc">Durée cible de stockage autonome</div>
+      <input type="range" min="1" max="24" step="1" value="${params.targetMonths}"
+        oninput="params.targetMonths=+this.value;document.getElementById('sv-m').textContent=this.value+' mois';saveData()">
+      <div class="range-limits"><span>1 mois</span><span>24 mois</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">Calories / jour</div>
+        <div class="range-big" style="font-size:24px" id="sv-k">${params.dailyKcal.toLocaleString('fr-FR')}</div>
+        <div class="range-desc">kcal famille</div>
+        <input type="range" min="4000" max="15000" step="100" value="${params.dailyKcal}"
+          oninput="params.dailyKcal=+this.value;document.getElementById('sv-k').textContent=(+this.value).toLocaleString('fr-FR');saveData()">
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">Eau / jour</div>
+        <div class="range-big" style="font-size:24px" id="sv-w">${params.dailyWater}</div>
+        <div class="range-desc">litres famille</div>
+        <input type="range" min="4" max="30" step="0.5" value="${params.dailyWater}"
+          oninput="params.dailyWater=+this.value;document.getElementById('sv-w').textContent=(+this.value).toFixed(1);saveData()">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px">Membres de la famille</div>
+      ${params.persons.map((p,i)=>`<div class="person-card">
+        <div class="person-avatar">${p.sex==='H'?'👨':p.sex==='F'?'👩':'👧'}</div>
+        <div class="person-info">
+          <div class="person-name">${p.name}</div>
+          <div class="person-detail">${p.sex==='H'?'Homme':p.sex==='F'?'Femme':'Enfant'} · ${p.age} ans</div>
+        </div>
+        <div class="person-actions">
+          <button class="btn-xs btn-e" onclick="openEditPerson(${i})">✏️</button>
+          <button class="btn-xs btn-d" onclick="delPerson(${i})">🗑️</button>
+        </div>
+      </div>`).join('')}
+      <button class="btn-add-p" onclick="openAddPerson()">+ Ajouter un membre</button>
+    </div>
+  </div>`;
+}
+
+function openAddPerson(){
+  editPersonIdx=-1;
+  document.getElementById('mp-title').textContent='Ajouter un membre';
+  document.getElementById('mp-name').value='';
+  document.getElementById('mp-age').value='';
+  openModal('modal-person');
+}
+function openEditPerson(i){
+  editPersonIdx=i;const p=params.persons[i];
+  document.getElementById('mp-title').textContent='Modifier — '+p.name;
+  document.getElementById('mp-name').value=p.name;
+  document.getElementById('mp-age').value=p.age;
+  document.getElementById('mp-sex').value=p.sex;
+  openModal('modal-person');
+}
+function savePerson(){
+  const p={
+    name:document.getElementById('mp-name').value||'Membre',
+    age:parseInt(document.getElementById('mp-age').value)||25,
+    sex:document.getElementById('mp-sex').value
+  };
+  editPersonIdx>=0?params.persons[editPersonIdx]=p:params.persons.push(p);
+  closeModal('modal-person');saveData();render();
+}
+function delPerson(i){
+  if(params.persons.length<=1)return alert('Au moins 1 membre requis.');
+  if(confirm('Supprimer "'+params.persons[i].name+'" ?')){params.persons.splice(i,1);render();}
+}
+
+// ── MODALS ───────────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+});
+
+// ── TOAST ────────────────────────────────────────────────────
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+render();
+</script>
+</body>
+</html>
